@@ -24,6 +24,7 @@ Preparação do ambiente laboratorial necessário.
 - Para processadores **Intel** e **AMD**, devem descarregar a ISO `"64-bit PC (AMD64) desktop image"` - [plucky](https://releases.ubuntu.com/plucky/).
 - Para processadores **ARM**, devem descarregar a ISO `"64-bit ARM (ARMv8/AArch64) desktop image"` - [plucky](https://cdimage.ubuntu.com/releases/plucky/release/).
 
+Mais informações no [guião 0](/guides/PDFs/guide-00.pdf).
 
 ---
 
