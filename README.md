@@ -26,6 +26,29 @@ Preparação do ambiente laboratorial necessário.
 
 Mais informações no [guião 0](/guides/PDFs/guide-00.pdf).
 
+
+### Máquina Virtual e SSH
+
+Visualizar VMs disponíveis:
+```
+VBoxManage list vms
+```
+
+Iniciar VM sem interface gráfica:
+```
+VBoxManage startvm "VM-name" --type headless
+```
+
+Visualizar VMs a executar:
+```
+VBoxManage list runningvms
+```
+
+Conectar, via SSH, à máquina virtual:
+```
+ssh <VM-name>@<VM-ip>
+```
+
 ---
 
 Se encontrarem **erros** ou acharem que algo pode estar melhor entrem em [contacto](mailto:a106919@alunos.uminho.pt) comigo.
