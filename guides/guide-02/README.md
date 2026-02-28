@@ -11,7 +11,8 @@ applications without inspecting their source code.
 
 ## Warmup
 
-Após executar `time ./metanode`, o output do programa `metanode` é:
+After executing `time ./metanode`, the output of the `metanode` program is:
+
 ```
 blocking
 resuming
@@ -27,13 +28,13 @@ key 8.txt, size 8, refs 0
 key 9.txt, size 9, refs 0
 ```
 
-Podemos verificar a existência de 10 novos ficheiros, com nomes do tipo `0.txt`, `1.txt`, ... Cada um dos ficheiros tem 10MB de tamanho.
+We can verify the existence of 10 new files, with names such as `0.txt`, `1.txt`, ... Each of the files has a size of 10MB.
 
-O output da contagem de tempo é:
+The time measurement output is:
 ```
-real	0m2.130s
-user	0m1.591s
-sys	    0m1.343s
+real    0m2.130s
+user    0m1.591s
+sys     0m1.343s
 ```
 
 
@@ -42,45 +43,47 @@ sys	    0m1.343s
 
 ### Comparing versions 0 and 1
 
-Versão 1 não escreve o conteúdo, os ficheiros tem 0 de tamanho.
+Version 1 does not write the content; the files have size 0.
 
-Os ficheiros `1.txt`... são abertos para leitura, e ao efetuar escritas dá erro.
+The files `1.txt`... are opened for reading, and when attempting to write, an error occurs.
 
-Output da execução `time ./metanode 1`:
+Output of running `time ./metanode 1`:
 ```
-real	0m2.474s
-user	0m2.399s
-sys  	0m0.765s
+real    0m2.474s
+user    0m2.399s
+sys     0m0.765s
 ```
-Após executar a versão 1 do programa, verificamos que os 10 ficheiros são criados, mas estão vazios (o seu tamanho é 0). Verificamos também que houve uma redução no tempo de execução por parte do sistema operativo.
 
-Através do comando `strace` podemos descobrir a causa do problema:
+After executing version 1 of the program, we observe that the 10 files are created, but they are empty (their size is 0). We also observe a reduction in execution time on the operating system side.
+
+Using the `strace` command, we can identify the cause of the problem:
 ```
 strace -yy ./metanode 1
 ```
-Após uma análise ao output, vemos que os ficheiros estão a ser abertos, mas a escrita não está a ser efetuada (devolvendo `-1`).
+
+After analyzing the output, we see that the files are being opened, but the write operation is not being performed (returning `-1`).
 ```
 openat(AT_FDCWD<...>, "3.txt", O_RDONLY|O_CREAT|O_TRUNC, 0600) = 3<.../3.txt>
 write(3<.../3.txt>, "nyEZFTTPAPGfiKQ3Y8eswj7hB42sjJWw"..., 10485760) = -1 EBADF (Bad file descriptor)
 close(3<.../3.txt>) = 0
 ```
 
-O problema está na system call `openat()`, mais precisamente nas flags selecionadas. Foram passadas as flags de **leitura**, criação e truncagem. Se um ficheiro está aberto unicamente para leitura, é evidente que as escritas vão falhar.
+The problem lies in the `openat()` system call, more specifically in the selected flags. The flags passed were **read-only**, create, and truncate. If a file is opened strictly for reading, it is expected that write operations will fail.
 
 
 ### Version 2
 
-Output da versão 2 (`time ./metanode 2`):
+Output of version 2 (`time ./metanode 2`):
 ```
-real	0m37.712s
-user	0m9.268s
-sys 	0m29.264s
+real    0m37.712s
+user    0m9.268s
+sys     0m29.264s
 ```
 
-O tamanho dos ficheiros resultantes já está correto, comparado com a versão anterior. O tempo de execução desta versão é bastante mais lento do que as versões anteriores. Através da ferramenta `htop` podemos fazer uma análise mais profunda à execução do programa e verificamos que `./metanode 2` está a realizar um elevado número de escritas:
+The size of the resulting files is now correct, compared to the previous version. The execution time of this version is significantly slower than the earlier versions. Using the `htop` tool, we can perform a deeper analysis of the program’s execution and observe that `./metanode 2` is performing a high number of write operations:
 ![HTOP](imgs/htop-v2.png)
 
-Através da ferramenta `strace`, podemos verificar que o programa está a efetuar escritas nos ficheiros byte a byte, realizando um número bastante elevado de system calls por segundo:
+Using the `strace` tool, we can verify that the program is writing to the files byte by byte, performing a very high number of system calls per second:
 ```
 ...
 write(3, "S", 1)                        = 1
@@ -96,50 +99,51 @@ write(3, "G", 1)                        = 1
 
 ### Version 3
 
-Output da versão 3 (`time ./metanode 3`):
+Output of version 3 (`time ./metanode 3`):
+```id="kq9x1m"
+real    2m21.690s
+user    2m17.815s
+sys     0m4.568s
 ```
-real	2m21.690s
-user	2m17.815s
-sys	    0m4.568s
-```
 
-A versão 3 do programa é ainda mais lenta que a versão 2, mas através de `time` verificamos que o tempo de execução do sistema não é elevado e a maioria do tempo perdido foi a executar computações. Estes dados permitem-nos supor que o problema poderá não estar na má utilização de chamadas ao sistema.
+Version 3 of the program is even slower than version 2. However, from `time` we observe that the system time is not high, and most of the time was spent performing computations in user space. This suggests that the issue may not be related to inefficient use of system calls.
 
-Aplicando o programa `strace`, verificamos que as chamadas ao sistema estão a ser utilizadas de forma correta. A ferramenta `htop` mostra-nos que existe um grande consumo de CPU, mas as escritas não são elevadas.
+By applying the `strace` tool, we verify that system calls are being used correctly. The `htop` tool shows high CPU usage, but write operations are not excessive.
 
-Através do comando `perf` podemos efetuar uma análise às funções utilizadas, e verificamos que a maioria do tempo de execução é "perdido" na função `random_string()`, mais precisamente na função que gera número aleatórios `rand()`:
+Using the `perf` command, we can analyze the functions being executed and observe that most of the execution time is "spent" in the `random_string()` function, more specifically in the random number generation function `rand()`:
 ![alt text](imgs/perf-report.png)
 
-Podemos também efetuar uma análise gráfica:
+We can also perform a graphical analysis:
 ![alt text](imgs/flamegraph.png)
 
 
 ### Version 4
 
-> :warning: **Recomendação**: executar `sudo -k` para "limpar" os privilégios root
+> ⚠️ **Recommendation**: run `sudo -k` to “clear” cached root privileges.
 
-Output da versão 4 (`time ./metanode 4`):
+Output of version 4 (`time ./metanode 4`):
 ```
-real	0m3.676s
-user	0m1.599s
-sys 	0m1.412s
+real    0m3.676s
+user    0m1.599s
+sys     0m1.412s
 ```
-O tamanho dos ficheiros está correto (10 MB) e o tempo de execução não apresenta anomalias. Em certos casos, podemos verificar que o programa pede a password ao utilizar, como se estivesse a realizar alguma operação priviligiada internamente.
 
-Através da ferramenta `journalctl` verificamos que existe um inicio de sessão realizado internamente pelo programa `metanode 4` e executa um comando "malicioso":
+The file size is correct (10 MB), and the execution time does not show anomalies. In some cases, we can observe that the program prompts for a password during execution, as if it were performing a privileged operation internally.
+
+Using the `journalctl` tool, we verify that there is a login session initiated internally by the `metanode 4` program, which executes a “malicious” command:
 ![alt text](imgs/journalctl.png)
 
-Podemos analisar as chamadas ao sistema e procurar por execuções de programas através de `strace`:
+We can analyze system calls and search for program executions using `strace`:
 ```
 strace -f -e trace=execve ./metanode 4
 ```
-- A opção `-f` permite seguir processo filhos (`fork()`)
+* The `-f` option allows tracing child processes (`fork()`).
 
-Encontramos a chamada ao sistema que procuravámos, efetuada por um processo filho:
+We find the system call we were looking for, executed by a child process:
 ```
 ...
 [pid  4677] execve("/usr/bin/sudo", ["sudo", "echo", "malicious!"], 0x5a1cb316c968 /* 24 vars */) = 0
 ...
 ```
 
-Esta versão de `metanode` evidencia um risco de segurança em programas. Nesta situação conseguimos reconhecer o problema através de `journalctl` porque se trata de um acesso com `sudo`. Se não for usado `sudo`, a ferramenta não identifica o inicio de sessão.
+This version of `metanode` demonstrates a security risk in programs. In this case, we were able to identify the issue through `journalctl` because it involved access via `sudo`. If `sudo` is not used, the tool does not report the session initiation.
